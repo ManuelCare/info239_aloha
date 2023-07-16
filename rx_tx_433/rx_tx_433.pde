@@ -59,7 +59,7 @@ void setup(){
     wait_time = 0;
 }
 bool readPackage() {
-  if(!vw_get_message(buf, BUFFER_SIZE)) return false;
+  if(!vw_get_message(buf, 24)) return false;
   o = buf[0];
   d = buf[1];
   l = buf[2];
@@ -67,6 +67,7 @@ bool readPackage() {
 }
 bool collision(){
   return( (destino==d) && (origen!=o));
+  
 }
 void wait(){
   wait_time += random(0,501);
@@ -87,11 +88,10 @@ void printStatus(){
     Serial.println("Loops: " + String((int)loops)+ "| Colisiones: " + String((int)colisiones[0]));
     previousMillis = currentMillis;
   }
-  
 }
 void enviar(){
   paquete[2] = mensaje[idx];
-  vw_send((uint8_t *)paquete, strlen(paquete));
+  vw_send((uint8_t *)paquete, 3);
   pkg_read = readPackage();
   if(pkg_read && collision()){
     //Serial.println("Colision con grupo " + String(buf[0]));
@@ -137,8 +137,8 @@ int desired_pos(){
   if(48<l && l<57) return 7;
 }
 void recibir(){
-  pkg_read = readPackage();
   if(pkg_read){
+    Serial.println(String((int)o) + " " +String((int)d) + " " + (char)l); 
     if(d == origen && d == 0){
       uint8_t dp = desired_pos();
       if(dp!= -1){ // -1 marca caracteres que no deben ser puestos
