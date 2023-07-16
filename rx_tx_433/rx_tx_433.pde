@@ -42,7 +42,8 @@ uint8_t o,d,l; //origen destino y letra del paquete recibido
 unsigned long previousMillis = 0;
 const unsigned long interval = 5000;
 char formattedText[20];
-uint8_t colisiones[16];
+uint16_t loops = 0;
+uint16_t colisiones[16];
 
 void setup(){
     Serial.begin(9600);
@@ -81,8 +82,9 @@ void printStatus(){
       Serial.print(formattedText);
       for(int j=0; j<8; j++)
         Serial.print(mensajes[i][j]);
-      Serial.println();
+      Serial.println("   " + String((int)colisiones[i]));
     }
+    Serial.println("Loops: " + String((int)loops)+ "| Colisiones: " + String((int)colisiones[0]));
     previousMillis = currentMillis;
   }
   
@@ -93,6 +95,8 @@ void enviar(){
   pkg_read = readPackage();
   if(pkg_read && collision()){
     //Serial.println("Colision con grupo " + String(buf[0]));
+    colisiones[0]++;
+    colisiones[buf[0]]++;
     digitalWrite(13, HIGH);
     wait();
   }
@@ -155,5 +159,6 @@ void loop(){
   enviar();
   recibir();
   printStatus();
+  loops++;
   delay(random(100,200));
 }
