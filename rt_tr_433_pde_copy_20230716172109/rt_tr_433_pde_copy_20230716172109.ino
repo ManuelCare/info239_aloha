@@ -23,7 +23,7 @@ pin 10 5v
 */
 
 #include <VirtualWire.h>
-uint8_t mensaje[8] = "GRUPO_09"; uint8_t origen = 9; uint8_t destino = 7; uint8_t letra; uint8_t paquete[3];
+uint8_t mensaje[8] = "GRUPO_09"; uint8_t origen = 9; uint8_t destino = 0; uint8_t letra; uint8_t paquete[3];
 uint8_t collisions_in_a_row = 0;
 uint8_t idx = 0;
 uint8_t m_template[6] = "GRUPO_";
@@ -34,6 +34,8 @@ uint8_t mensajes_filled[16];
 uint16_t colisiones[16];
 uint16_t envios[16];
 uint16_t recepciones[16];
+
+uint16_t baseTimeBetweenSend = 1000;
 
 unsigned long previousMillis = 0;
 unsigned long timeElapsed;
@@ -57,6 +59,7 @@ bool leer(){
   uint8_t buflen = VW_MAX_MESSAGE_LEN;
   if(vw_get_message(buf, &buflen)){
     emisor = buf[0]; receptor = buf[1]; contenido = buf[2];
+    //Serial.println(String(emisor)+ " " + String(receptor)+ " " + String((char)contenido));
     return true;
   }
   return false;
@@ -69,12 +72,12 @@ void manejarEnvio(){
       digitalWrite(13,HIGH);
       collisions_in_a_row++;
       colisiones[emisor]++;
-      timeTillNextSend = 1000 + collisions_in_a_row*random(0 ,501);
+      timeTillNextSend = baseTimeBetweenSend + collisions_in_a_row*random(0 ,501);
       if(collisions_in_a_row>=10) timeTillNextSend = 0;
     }
     else{
       envios[destino]++;
-      timeTillNextSend=1000;
+      timeTillNextSend=baseTimeBetweenSend;
       idx = ((idx==7) ? 0 : idx+1);
       paquete[2] = mensaje[idx];
       collisions_in_a_row = 0;
@@ -122,12 +125,12 @@ void recibir(){
       //Serial.println(String(emisor)+ " " + String(receptor)+ " " + String((char)contenido));
         uint8_t dp = desired_pos();
         if(dp!= -1){ // -1 marca caracteres que no deben ser puestos
+          recepciones[emisor]++;
           if(!isFilled(dp)){
             mensajes[emisor][dp] = contenido;
             fill(dp);
-            recepciones[emisor]++;
             if(mensajes_filled[emisor]==0b11111111){ // si estan todas las pos llenas
-              Serial.println("Mensaje recibido del grupo "+ String((int)emisor)+  " :" + mensajes[emisor]);
+              Serial.print("Mensaje recibido del grupo "+ String((int)emisor)+  ": " + mensajes[emisor] + "; tiempo : "); printTime();
               mensajes_filled[emisor] = 0;
             }
           }
@@ -138,12 +141,21 @@ void recibir(){
   
 }
 char formattedText[20];
+void printTime(){
+  unsigned long currentMillis = millis();
+  unsigned long hours = currentMillis / 3600000;
+  unsigned long minutes = (currentMillis % 3600000) / 60000;
+  unsigned long seconds = (currentMillis % 60000) / 1000;
+  unsigned long milliseconds = currentMillis % 1000;
+  snprintf(formattedText, sizeof(formattedText), "%02lu:%02lu:%02lu.%03lu", hours, minutes, seconds, milliseconds);
+  Serial.println(formattedText);
+}
 void printStatus(){
   if(timeElapsed > timeTillNextPrintStatus) timeTillNextPrintStatus = 0;
   else timeTillNextPrintStatus -= timeElapsed;
   //Serial.print(currentMillis);Serial.print(" "); Serial.println(currentMillis - previousMillis);
   if (timeTillNextPrintStatus == 0) {
-    Serial.println("Grupos | mensaje  | colisiones | Envios | recepciones");
+    Serial.println("Grupos | mensaje  | colisiones    | Envios       | recepciones");
     for(int i=0; i<16; i++){
       sprintf(formattedText, "%-9d", i);
       Serial.print(formattedText);
@@ -157,6 +169,7 @@ void printStatus(){
       Serial.print(formattedText);
       Serial.println();
     }
+    Serial.print("Tiempo: ");printTime();
     timeTillNextPrintStatus = 5000;
   }
 }
@@ -170,5 +183,5 @@ void loop() {
   recibir();
   previousMillis = currentMillis;
   printStatus();
-  delay(100);
+  delay(1);
 }
