@@ -27,6 +27,7 @@ uint8_t mensaje[8] = "GRUPO_09"; uint8_t origen = 9; uint8_t destino = 0; uint8_
 uint8_t collisions_in_a_row = 0;
 uint8_t idx = 0;
 uint8_t m_template[6] = "GRUPO_";
+uint8_t m_template_small[6] = "grupo_";
 bool hayMensaje;
 uint8_t emisor, receptor, contenido;
 char mensajes[16][8];
@@ -100,7 +101,7 @@ void fill(int i){
 }
 int desired_pos(){
   uint8_t i = 0;
-  while(i<6 && m_template[i] != contenido) i++; //si es una letra de "GRUPO_"
+  while(i<6 && m_template[i] != contenido && m_template_small[i] != contenido) i++; //si es una letra de "GRUPO_"
   if(i<6) return i;
   if(emisor>9 ){ //si el grupo es mayor a 9, por lo tanto puede tener un 1 en la ultima o penultima pos
     if(contenido=='1'){ // entonces si recibimos un 1
