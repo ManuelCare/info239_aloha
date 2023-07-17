@@ -23,7 +23,7 @@ pin 10 5v
 */
 
 #include <VirtualWire.h>
-uint8_t mensaje[8] = "GRUPO_08"; uint8_t origen = 8; uint8_t destino = 0; uint8_t letra; uint8_t paquete[3];
+uint8_t mensaje[8] = "GRUPO_09"; uint8_t origen = 9; uint8_t destino = 7; uint8_t letra; uint8_t paquete[3];
 uint8_t collisions_in_a_row = 0;
 uint8_t idx = 0;
 uint8_t m_template[6] = "GRUPO_";
@@ -33,6 +33,7 @@ char mensajes[16][8];
 uint8_t mensajes_filled[16];
 uint16_t colisiones[16];
 uint16_t envios[16];
+uint16_t recepciones[16];
 
 unsigned long previousMillis = 0;
 unsigned long timeElapsed;
@@ -63,25 +64,27 @@ bool leer(){
 
 void enviar(){vw_send(paquete, 3);}
 void manejarEnvio(){
-  if(timeElapsed > timeTillNextSend) timeTillNextSend = 0;
-  else timeTillNextSend -= timeElapsed;
   if(timeTillNextSend==0){
     if(hayMensaje && (destino==receptor) && (origen!=emisor)){
+      digitalWrite(13,HIGH);
       collisions_in_a_row++;
-      colisiones[0]++;
       colisiones[emisor]++;
-      timeTillNextSend = 500 + collisions_in_a_row*random(0 ,501);
+      timeTillNextSend = 1000 + collisions_in_a_row*random(0 ,501);
       if(collisions_in_a_row>=10) timeTillNextSend = 0;
     }
     else{
-      envios[0]++;
-      envios[emisor]++;
-      timeTillNextSend=500;
+      envios[destino]++;
+      timeTillNextSend=1000;
       idx = ((idx==7) ? 0 : idx+1);
       paquete[2] = mensaje[idx];
       collisions_in_a_row = 0;
     }
   }
+  if(timeElapsed >= timeTillNextSend){
+    timeTillNextSend = 0;
+    digitalWrite(13,LOW);
+  }
+  else timeTillNextSend -= timeElapsed;
 }
 //////////////
 bool isFilled(int i){
@@ -98,7 +101,7 @@ int desired_pos(){
   if(i<6) return i;
   if(emisor>9 ){ //si el grupo es mayor a 9, por lo tanto puede tener un 1 en la ultima o penultima pos
     if(contenido=='1'){ // entonces si recibimos un 1
-      if(isFilled(6)) { // preguntamos si ya hay un 1 en la primera pos
+      if(isFilled(6) && emisor==11) { // preguntamos si ya hay un 1 en la primera pos
         return 7; // para ponerlo en la ultima pos
       }
       else{ //sino lo ponemos en la primera pos
@@ -115,23 +118,23 @@ int desired_pos(){
 }
 void recibir(){
   if(hayMensaje){
-    Serial.println(String(emisor)+ " " + String(receptor)+ " " + String((char)contenido));
-  }
-
-  if(receptor == origen || receptor == 0){
-      uint8_t dp = desired_pos();
-      if(dp!= -1){ // -1 marca caracteres que no deben ser puestos
-        if(!isFilled(dp)){
-          mensajes[emisor][dp] = contenido;
-          fill(dp);
-
-          if(mensajes_filled[emisor]==0b11111111){ // si estan todas las pos llenas
-            Serial.print("Mensaje recibido del grupo "+ String((char)emisor)+ mensajes[emisor]);
-            mensajes_filled[emisor] = 0;
+    if(receptor == origen || receptor == 0){
+      //Serial.println(String(emisor)+ " " + String(receptor)+ " " + String((char)contenido));
+        uint8_t dp = desired_pos();
+        if(dp!= -1){ // -1 marca caracteres que no deben ser puestos
+          if(!isFilled(dp)){
+            mensajes[emisor][dp] = contenido;
+            fill(dp);
+            recepciones[emisor]++;
+            if(mensajes_filled[emisor]==0b11111111){ // si estan todas las pos llenas
+              Serial.println("Mensaje recibido del grupo "+ String((int)emisor)+  " :" + mensajes[emisor]);
+              mensajes_filled[emisor] = 0;
+            }
           }
         }
       }
-    }
+  }
+
   
 }
 char formattedText[20];
@@ -140,7 +143,7 @@ void printStatus(){
   else timeTillNextPrintStatus -= timeElapsed;
   //Serial.print(currentMillis);Serial.print(" "); Serial.println(currentMillis - previousMillis);
   if (timeTillNextPrintStatus == 0) {
-    Serial.println("Grupos | mensaje  | colisiones | Envios");
+    Serial.println("Grupos | mensaje  | colisiones | Envios | recepciones");
     for(int i=0; i<16; i++){
       sprintf(formattedText, "%-9d", i);
       Serial.print(formattedText);
@@ -148,20 +151,24 @@ void printStatus(){
       Serial.print(mensajes[i][j]);
       sprintf(formattedText, "      %-9d", colisiones[i]);
       Serial.print(formattedText);
-      Serial.println(envios[i]);
+      sprintf(formattedText, "      %-9d", envios[i]);
+      Serial.print(formattedText);
+      sprintf(formattedText, "      %-9d", recepciones[i]);
+      Serial.print(formattedText);
+      Serial.println();
     }
-    Serial.println("Envios: " + String((int)envios[0])+ "| Colisiones: " + String((int)colisiones[0]));
     timeTillNextPrintStatus = 5000;
   }
 }
 void loop() {
   unsigned long currentMillis = millis();
   timeElapsed = currentMillis - previousMillis;
-  if(timeTillNextSend==0) enviar();
+  if(timeTillNextSend==0)
+    enviar();
   hayMensaje = leer();
   manejarEnvio();
   recibir();
-  //printStatus();
   previousMillis = currentMillis;
+  printStatus();
   delay(100);
 }
