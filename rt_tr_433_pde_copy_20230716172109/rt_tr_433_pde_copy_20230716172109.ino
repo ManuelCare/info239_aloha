@@ -184,5 +184,5 @@ void loop() {
   recibir();
   previousMillis = currentMillis;
   printStatus();
-  delay(1);
+  delay(100);
 }
