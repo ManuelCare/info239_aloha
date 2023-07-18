@@ -73,7 +73,7 @@ void manejarEnvio(){
       digitalWrite(13,HIGH);
       collisions_in_a_row++;
       colisiones[emisor]++;
-      timeTillNextSend = baseTimeBetweenSend + collisions_in_a_row*random(0 ,501);
+      timeTillNextSend = baseTimeBetweenSend + collisions_in_a_row*random(0 ,1001);
       if(collisions_in_a_row>=10) timeTillNextSend = 0;
     }
     else{
